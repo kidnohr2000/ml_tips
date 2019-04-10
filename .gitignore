@@ -1,0 +1,6 @@
+__pycache__/
+__cache__/
+*.pyc
+monodoko/apps1/migrations/*
+.DS_Store
+!.gitignore
