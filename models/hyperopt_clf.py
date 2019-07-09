@@ -63,13 +63,7 @@ HPO_PARAMS = {
         'n_estimators': hp.choice('n_estimators', range(100,500)),
         'criterion': hp.choice('criterion', ["gini", "entropy"])
     },
-    'RF': {
-        'max_depth': hp.choice('max_depth', range(1,20)),
-        # 'max_features': hp.choice('max_features', range(1,150)),
-        'n_estimators': hp.choice('n_estimators', range(100,500)),
-        'criterion': hp.choice('criterion', ["gini", "entropy"])
-    },
-    'KNN': {
+    'KN': {
         'n_neighbors': hp.choice('n_neighbors', range(4, 9)),
         'p': hp.choice('p', [1, 2]),
         'metric': 'minkowski',
@@ -81,6 +75,15 @@ HPO_PARAMS = {
         'hidden_layer_sizes': hp.choice('hidden_layer_sizes', [(i + 2, 2) for i in range(3)]),
         'random_state': RANDOM_STATE,
     }
+}
+
+CLF_DICT = {
+    'SVC': SVC,
+    'XGB': xgb,
+    'LR': LogisticRegression,
+    'RF': RandomForestClassifier,
+    'KN': KNeighborsClassifier,
+    'MLP': MLPClassifier,
 }
 
 def trail_run(objective, hyperopt_parameters, max_evals=200):
@@ -126,9 +129,10 @@ class Clf_HpoSearch(object):
     def __init__(self, X, y, model_name, metric_name='auc'):
         self.X, self.y = X, y
         self.suffle_data()
+        self.model_name = model_name
         self.hyperopt_parameters = HPO_PARAMS[model_name]
         self.metric = METRIC_DICT[metric_name]
-        self.objective = getattr(self, "{}_objective".format(model_name.lower()))
+        # self.objective = getattr(self, "{}_objective".format(model_name.lower()))
 
     def suffle_data(self, test_size=0.2, random_state=None):
         x_train, x_test, y_train, y_test = train_test_split(
@@ -140,19 +144,11 @@ class Clf_HpoSearch(object):
         self.y_train = y_train
         self.y_test = y_test
 
-    def svc_objective(self, args):
-        print("Training with params: ")
-        print(args)
-        clf = SVC(**args)
-        clf.fit(self.x_train, self.y_train)
-        print(self.x_train.shape, self.y_train.shape)
-        # validationデータを使用して、ラベルの予測
-        pred = clf.predict(self.x_test)
-        # 予測ラベルと正解ラベルを使用してmicro f1を計算
-        score = self.metric(self.y_test, pred)
-        # 今回はmicro f1を最大化したいので、-1をかけて最小化に合わせる
-        print("\t{0} {1}\n\n".format(self.metric.__qualname__, score))
-        return {'loss': -1 * score, 'status': STATUS_OK}
+    def objective(self, args):
+        if self.model_name == 'XGB':
+            return self.xgb_objective(args)
+        else:
+            return self.clf_objective(args)
 
     def xgb_objective(self, args):
         print("Training with params: ")
@@ -182,52 +178,10 @@ class Clf_HpoSearch(object):
         loss = 1 - score
         return {'loss': loss, 'status': STATUS_OK}
 
-    def lr_objective(self, args):
+    def clf_objective(self, args):
         print("Training with params: ")
         print(args)
-        clf = LogisticRegression(**args)
-        clf.fit(self.x_train, self.y_train)
-        print(self.x_train.shape, self.y_train.shape)
-        # validationデータを使用して、ラベルの予測
-        pred = clf.predict(self.x_test)
-        # 予測ラベルと正解ラベルを使用してmicro f1を計算
-        score = self.metric(self.y_test, pred)
-        # 今回はmicro f1を最大化したいので、-1をかけて最小化に合わせる
-        print("\t{0} {1}\n\n".format(self.metric.__qualname__, score))
-        return {'loss': -1 * score, 'status': STATUS_OK}
-
-    def rf_objective(self, args):
-        print("Training with params: ")
-        print(args)
-        clf = RandomForestClassifier(**args)
-        clf.fit(self.x_train, self.y_train)
-        print(self.x_train.shape, self.y_train.shape)
-        # validationデータを使用して、ラベルの予測
-        pred = clf.predict(self.x_test)
-        # 予測ラベルと正解ラベルを使用してmicro f1を計算
-        score = self.metric(self.y_test, pred)
-        # 今回はmicro f1を最大化したいので、-1をかけて最小化に合わせる
-        print("\t{0} {1}\n\n".format(self.metric.__qualname__, score))
-        return {'loss': -1 * score, 'status': STATUS_OK}
-
-    def knn_objective(self, args):
-        print("Training with params: ")
-        print(args)
-        clf = KNeighborsClassifier(**args)
-        clf.fit(self.x_train, self.y_train)
-        print(self.x_train.shape, self.y_train.shape)
-        # validationデータを使用して、ラベルの予測
-        pred = clf.predict(self.x_test)
-        # 予測ラベルと正解ラベルを使用してmicro f1を計算
-        score = self.metric(self.y_test, pred)
-        # 今回はmicro f1を最大化したいので、-1をかけて最小化に合わせる
-        print("\t{0} {1}\n\n".format(self.metric.__qualname__, score))
-        return {'loss': -1 * score, 'status': STATUS_OK}
-
-    def mlp_objective(self, args):
-        print("Training with params: ")
-        print(args)
-        clf = MLPClassifier(**args)
+        clf = CLF_DICT[self.model_name](**args)
         clf.fit(self.x_train, self.y_train)
         print(self.x_train.shape, self.y_train.shape)
         # validationデータを使用して、ラベルの予測
