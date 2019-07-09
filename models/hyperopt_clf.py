@@ -10,6 +10,8 @@ from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, clone
 from hyperopt import hp, tpe, Trials, fmin, STATUS_OK, space_eval
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
 
@@ -21,6 +23,7 @@ from sklearn.metrics import (
 )
 
 RANDOM_STATE = 123
+MP = 4
 
 HPO_PARAMS = {
     'SVC': {
@@ -43,7 +46,7 @@ HPO_PARAMS = {
         'objective': 'binary:logistic',
         # Increase this number if you have more cores. Otherwise, remove it and it will default
         # to the maxium number.
-        'n_jobs': 4,
+        'n_jobs': MP,
         'booster': 'gbtree',
         'tree_method': 'exact',
         'silent': 1,
@@ -60,6 +63,24 @@ HPO_PARAMS = {
         'n_estimators': hp.choice('n_estimators', range(100,500)),
         'criterion': hp.choice('criterion', ["gini", "entropy"])
     },
+    'RF': {
+        'max_depth': hp.choice('max_depth', range(1,20)),
+        # 'max_features': hp.choice('max_features', range(1,150)),
+        'n_estimators': hp.choice('n_estimators', range(100,500)),
+        'criterion': hp.choice('criterion', ["gini", "entropy"])
+    },
+    'KNN': {
+        'n_neighbors': hp.choice('n_neighbors', range(4, 9)),
+        'p': hp.choice('p', [1, 2]),
+        'metric': 'minkowski',
+        'n_jobs': MP,
+    },
+    'MLP': {
+        'solver': 'lbfgs',
+        'alpha': hp.loguniform('alpha', 10**-5, 10**-1),
+        'hidden_layer_sizes': hp.choice('hidden_layer_sizes', [(i + 2, 2) for i in range(3)]),
+        'random_state': RANDOM_STATE,
+    }
 }
 
 def trail_run(objective, hyperopt_parameters, max_evals=200):
@@ -82,8 +103,10 @@ def trail_run(objective, hyperopt_parameters, max_evals=200):
     return space_eval(hyperopt_parameters, best), trials
 
 # 例:
-# best, trials = trail_run(chs.svc_objective, chs.hyperopt_parameters, max_evals=5)
-# print(best)
+# for k in HPO_PARAMS.keys():
+#     chs = Clf_HpoSearch(data, target[:, 0], k)
+#     best, trials = trail_run(chs.objective, chs.hyperopt_parameters, max_evals=5)
+#     print(best)
 
 def f1_wrapper(func, average=None):
     @functools.wraps(func)
@@ -187,3 +210,30 @@ class Clf_HpoSearch(object):
         print("\t{0} {1}\n\n".format(self.metric.__qualname__, score))
         return {'loss': -1 * score, 'status': STATUS_OK}
 
+    def knn_objective(self, args):
+        print("Training with params: ")
+        print(args)
+        clf = KNeighborsClassifier(**args)
+        clf.fit(self.x_train, self.y_train)
+        print(self.x_train.shape, self.y_train.shape)
+        # validationデータを使用して、ラベルの予測
+        pred = clf.predict(self.x_test)
+        # 予測ラベルと正解ラベルを使用してmicro f1を計算
+        score = self.metric(self.y_test, pred)
+        # 今回はmicro f1を最大化したいので、-1をかけて最小化に合わせる
+        print("\t{0} {1}\n\n".format(self.metric.__qualname__, score))
+        return {'loss': -1 * score, 'status': STATUS_OK}
+
+    def mlp_objective(self, args):
+        print("Training with params: ")
+        print(args)
+        clf = MLPClassifier(**args)
+        clf.fit(self.x_train, self.y_train)
+        print(self.x_train.shape, self.y_train.shape)
+        # validationデータを使用して、ラベルの予測
+        pred = clf.predict(self.x_test)
+        # 予測ラベルと正解ラベルを使用してmicro f1を計算
+        score = self.metric(self.y_test, pred)
+        # 今回はmicro f1を最大化したいので、-1をかけて最小化に合わせる
+        print("\t{0} {1}\n\n".format(self.metric.__qualname__, score))
+        return {'loss': -1 * score, 'status': STATUS_OK}
