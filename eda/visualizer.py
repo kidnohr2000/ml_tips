@@ -18,6 +18,8 @@ import seaborn as sns
 import scipy.stats as st
 
 from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import StandardScaler
 
 from .converter import standard_scaler
@@ -39,10 +41,10 @@ def get_missing_data(df):
     return pd.DataFrame({'Missing Ratio' :list_na})
 
 
-def null_ratio_visualizer(df, num=None):
+def null_ratio_visualizer(df, ex_cols=[]):
 
-    if num:
-        df = df[:num]
+    if ex_cols:
+        df = df.drop(columns=ex_cols)
     missing_data = get_missing_data(df)
     display(missing_data)
 
@@ -59,9 +61,8 @@ def null_ratio_visualizer(df, num=None):
 
 
 def log_convert_vidualizer(df, sel_col):
-
+    sns.set()
     _, a = plt.subplots(nrows=len(sel_col), ncols=2, figsize=(14, 2 * len(sel_col)))
-
     a = a.ravel()
     for idx,ax in tqdm(enumerate(zip(a[::2], a[1::2]))):
         l = sel_col[idx]
@@ -92,7 +93,10 @@ def decompose_model_visualizer(
         X_std[np.where(X < -3)] = -3
         X_std[np.where(X > 3)] = 3
 
-    X_tr = model.fit_transform(X_std)
+    if model.__class__.__name__ == 'LinearDiscriminantAnalysis':
+        X_tr = model.fit_transform(X_std, y)
+    else:
+        X_tr = model.fit_transform(X_std)
 
     X_p1 = X_tr[np.where(y==1), visual_dim[0]]
     X_n1 = X_tr[np.where(y==0), visual_dim[0]]
@@ -104,8 +108,8 @@ def decompose_model_visualizer(
     plt.scatter(X_p1, X_p2, color='g', label='Positive', alpha=0.5)
     plt.scatter(X_n1, X_n2, color='r', label='Negative', alpha=0.5)
 
-    plt.xlabel('PC{}'.format(visual_dim[0]))
-    plt.ylabel('PC{}'.format(visual_dim[1]))
+    plt.xlabel('dimention {}'.format(visual_dim[0]))
+    plt.ylabel('dimention {}'.format(visual_dim[1]))
 
     plt.title(model.__class__.__name__)
 
@@ -115,8 +119,8 @@ def decompose_model_visualizer(
     plt.show()
 
 
-def create_corrmap(df, ex_col):
-    corrmat = df.drop(columns=ex_col).corr()
+def create_corrmap(df, ex_cols=[]):
+    corrmat = df.drop(columns=ex_cols).corr()
     plt.subplots(figsize=(12,9))
     sns.heatmap(corrmat, vmax=0.9, square=True)
     plt.show()
@@ -133,7 +137,7 @@ def histgram_per_class(X, y, title='histgram_per_class'):
 
     line_num = math.ceil(len(cols)/2)
 
-    _,a = plt.subplots(nrows=line_num, ncols=2, figsize=(8, 2 * line_num))
+    _,a = plt.subplots(nrows=line_num, ncols=2, figsize=(12, 3 * line_num))
     a = a.ravel()
     for idx,ax in enumerate(a):
         if idx == len(cols):

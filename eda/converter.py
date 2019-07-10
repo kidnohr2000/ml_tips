@@ -6,6 +6,7 @@ from copy import deepcopy as copy
 import os
 import re
 import gc
+# import functools
 
 import pandas as pd
 import numpy as np
@@ -17,6 +18,7 @@ import scipy.stats as st
 
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import OneHotEncoder
 
 pd.set_option('display.max_columns', 200)
 # カラム内の文字数
@@ -36,6 +38,18 @@ def standard_scaler(X, eps=0):
 
 
     return (X - _mean) / (_std + eps), _mean, _std
+
+
+def df_standard_scaler(df, eps=0, suffix=''):
+    idxs = df.index
+    if suffix:
+        cols = ['{0}_{1}'.format(col, suffix) for col in df.columns]
+    else:
+        cols = df.columns
+
+    X = df.values
+    X_std, _mean, _std = standard_scaler(X, eps=eps)
+    return pd.DataFrame(data=X_std, index=idxs, columns=cols, dtype='float'), _mean, _std
 
 
 # remove col which has the same values
@@ -81,4 +95,13 @@ def add_static_col(_df, cols):
             on=col,
             how='left',
         )
+    return df
+
+def add_onehot_col(_df, cols):
+    df = _df.copy()
+    for col in tqdm(cols):
+        df_dummies = pd.get_dummies(df, prefix=str(col) + '_', dummy_na=False, sparse=True)
+        df.drop(columns=[col], inplace=True)
+
+        df = df.join(df_dummies)
     return df
