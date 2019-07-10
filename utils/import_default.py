@@ -29,3 +29,5 @@ from matplotlib import rcParams
 rcParams['font.family'] = 'IPAPGothic'
 
 %matplotlib inline
+
+# from IPython.core.debugger import Pdb; Pdb().set_trace()

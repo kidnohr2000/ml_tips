@@ -26,11 +26,11 @@ RANDOM_STATE = 123
 MP = 4
 
 HPO_PARAMS = {
-    'SVC': {
-        'C': hp.loguniform('C', -8, 2),
-        'gamma': hp.loguniform('gamma', -8, 2),
-        'kernel': hp.choice('kernel', ['rbf', 'poly', 'sigmoid']),
-        'random_state': RANDOM_STATE
+    'RF': {
+        'max_depth': hp.choice('max_depth', range(1,20)),
+        # 'max_features': hp.choice('max_features', range(1,150)),
+        'n_estimators': hp.choice('n_estimators', range(100,500)),
+        'criterion': hp.choice('criterion', ["gini", "entropy"])
     },
     'XGB': {
         'n_estimators': hp.quniform('n_estimators', 100, 1000, 1),
@@ -52,23 +52,6 @@ HPO_PARAMS = {
         'silent': 1,
         'seed': RANDOM_STATE
     },
-    'LR': {
-        'C': hp.loguniform('C', 0.00001, 100),
-        'penalty': hp.choice('penalty', ['l1', 'l2']),
-        'random_state': RANDOM_STATE
-    },
-    'RF': {
-        'max_depth': hp.choice('max_depth', range(1,20)),
-        # 'max_features': hp.choice('max_features', range(1,150)),
-        'n_estimators': hp.choice('n_estimators', range(100,500)),
-        'criterion': hp.choice('criterion', ["gini", "entropy"])
-    },
-    'KN': {
-        'n_neighbors': hp.choice('n_neighbors', range(4, 9)),
-        'p': hp.choice('p', [1, 2]),
-        'metric': 'minkowski',
-        'n_jobs': MP,
-    },
     'MLP': {
         'solver': 'lbfgs',
         'alpha': hp.loguniform('alpha', 10**-5, 10**-1),
@@ -78,12 +61,8 @@ HPO_PARAMS = {
 }
 
 CLF_DICT = {
-    'SVC': SVC,
-    'XGB': xgb,
-    'LR': LogisticRegression,
     'RF': RandomForestClassifier,
-    'KN': KNeighborsClassifier,
-    'MLP': MLPClassifier,
+    'XGB': xgb,
 }
 
 def trail_run(objective, hyperopt_parameters, max_evals=200):

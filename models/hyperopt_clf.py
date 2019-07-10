@@ -145,6 +145,7 @@ class Clf_HpoSearch(object):
         self.y_test = y_test
 
     def objective(self, args):
+        self.suffle_data()
         if self.model_name == 'XGB':
             return self.xgb_objective(args)
         else:

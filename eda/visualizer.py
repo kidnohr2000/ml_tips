@@ -60,8 +60,39 @@ def null_ratio_visualizer(df, ex_cols=[]):
     plt.show()
 
 
+def null_value_check(df):
+    tmp = df.isnull().sum().sort_values(ascending=False)
+
+    if tmp.sum() == 0:
+        print('no null data!!')
+    else:
+        display(tmp[tmp > 0])
+
+
+def enpty_string_check(df):
+    tmp = (df=='').sum().sort_values(ascending=False)
+
+    if tmp.sum() == 0:
+        print('no empty string data!!')
+    else:
+        display(tmp[tmp > 0])
+
+
+def get_col_hasnull(df, thres=0):
+    tmp = df.isnull().sum().sort_values(ascending=False)
+    ratio = tmp / len(df)
+    return tmp[ratio>thres].index.values
+
+
+def get_null_rows(df, cols):
+    for col in tqdm(cols):
+        print('{} : null data row'.format(col))
+        display(df.loc[df[col].isnull(), :].head())
+
+
+
 def log_convert_vidualizer(df, sel_col):
-    sns.set()
+    sns.set(font='IPAPGothic')
     _, a = plt.subplots(nrows=len(sel_col), ncols=2, figsize=(14, 2 * len(sel_col)))
     a = a.ravel()
     for idx,ax in tqdm(enumerate(zip(a[::2], a[1::2]))):
@@ -84,7 +115,7 @@ def decompose_model_visualizer(
 ):
 
     if isinstance_pd(X):
-        X = X.values
+        X = X.values.astype(float)
     if isinstance_pd(y):
         y = y.values
 
@@ -119,7 +150,16 @@ def decompose_model_visualizer(
     plt.show()
 
 
+def get_col_high_corr(df, thres=0.95, ex_cols=[]):
+    corrmat = df.drop(columns=ex_cols).corr()
+    indices = np.where(corrmat > thres)
+    indices = [(corrmat.index[x], corrmat.columns[y]) for x, y in zip(*indices)
+                                            if x != y and x < y]
+    return indices
+
+
 def create_corrmap(df, ex_cols=[]):
+    sns.set(font='IPAPGothic')
     corrmat = df.drop(columns=ex_cols).corr()
     plt.subplots(figsize=(12,9))
     sns.heatmap(corrmat, vmax=0.9, square=True)
@@ -137,6 +177,7 @@ def histgram_per_class(X, y, title='histgram_per_class'):
 
     line_num = math.ceil(len(cols)/2)
 
+    sns.set(font='IPAPGothic')
     _,a = plt.subplots(nrows=line_num, ncols=2, figsize=(12, 3 * line_num))
     a = a.ravel()
     for idx,ax in enumerate(a):
@@ -161,7 +202,19 @@ def histgram_per_class(X, y, title='histgram_per_class'):
     plt.show()
 
 
-def importance_barplot(X, y, model, upper=30):
+def _pairplot(df, x_vars=None, y_vars=None, hue=None):
+    for col in y_vars:
+        sns.set(font='IPAPGothic')
+        plt.figure(figsize=(2 * len(x_vars), 10))
+        g= sns.pairplot(
+            df, x_vars=x_vars,  y_vars=[col],
+        #     kind="reg",
+            hue=hue
+        )
+        plt.show()
+
+
+def importance_barplot(X, y, model, upper=30, train=True):
 
     # 例
     # params = dict(
@@ -170,8 +223,8 @@ def importance_barplot(X, y, model, upper=30):
     # model = RandomForestRegressor(**params)
 
     res_dic = {}
-
-    model.fit(X, y)
+    if train:
+        model.fit(X, y)
 
     importances = model.feature_importances_
 
@@ -182,7 +235,7 @@ def importance_barplot(X, y, model, upper=30):
     res_dic['importance_columns_score'] = importances[indices]
 
     plt.figure(figsize=(10,6))
-    sns.set()
+    sns.set(font='IPAPGothic')
     plt.title("Feature Importances: {}".format(model.__class__.__name__))
     plt.bar(range(len(importances[indices])), importances[indices], align='center')
     plt.xticks(range(len(importances[indices])), X.columns[indices], rotation=90)

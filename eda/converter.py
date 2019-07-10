@@ -97,10 +97,13 @@ def add_static_col(_df, cols):
         )
     return df
 
-def add_onehot_col(_df, cols):
+def add_onehot_col(_df, cols, sparse=False):
     df = _df.copy()
     for col in tqdm(cols):
-        df_dummies = pd.get_dummies(df, prefix=str(col) + '_', dummy_na=False, sparse=True)
+        df_dummies = pd.get_dummies(
+            df[col], prefix=str(col) + '_', dummy_na=False,
+            sparse=sparse
+        )
         df.drop(columns=[col], inplace=True)
 
         df = df.join(df_dummies)
