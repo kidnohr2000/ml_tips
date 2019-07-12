@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 # vim:tabstop=4:shiftwidth=4:expandtab
 
-from copy import deepcopy as copy
-
 import os
 import re
 import math
 import gc
+from inspect import signature
+from copy import deepcopy as copy
 
 import pandas as pd
 import numpy as np
@@ -21,6 +21,11 @@ from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import StandardScaler
+
+from sklearn.metrics import average_precision_score
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.model_selection import StratifiedKFold
 
 from .converter import standard_scaler
 from .utils.pd_utils import isinstance_pd
@@ -150,10 +155,14 @@ def decompose_model_visualizer(
     plt.show()
 
 
-def get_col_high_corr(df, thres=0.95, ex_cols=[]):
-    corrmat = df.drop(columns=ex_cols).corr()
+def get_col_high_corr(df, thres=0.95, ex_cols=[], _abs=True):
+    _corrmat = df.drop(columns=ex_cols).corr()
+    if _abs:
+        corrmat = _corrmat.applymap(np.abs)
+    else:
+        corrmat = copy(_corrmat)
     indices = np.where(corrmat > thres)
-    indices = [(corrmat.index[x], corrmat.columns[y]) for x, y in zip(*indices)
+    indices = [(corrmat.index[x], corrmat.columns[y], round(_corrmat.iloc[x, y], 3)) for x, y in zip(*indices)
                                             if x != y and x < y]
     return indices
 
@@ -198,6 +207,7 @@ def histgram_per_class(X, y, title='histgram_per_class'):
         ax.set_ylabel('probability density')
         ax.set_title(title)
 
+    plt.legend()
     plt.tight_layout()
     plt.show()
 
@@ -245,3 +255,194 @@ def importance_barplot(X, y, model, upper=30, train=True):
     plt.show()
 
     return res_dic
+
+
+# In matplotlib < 1.5, plt.fill_between does not have a 'step' argument
+
+def xbtraincv_plot_roc_prerec(X, y, params={}, target_name=None):
+    if target_name is not None:
+        print(f'target: {target_name}')
+    sns.set(font='IPAPGothic')
+    _, a = plt.subplots(nrows=1, ncols=2, figsize=(14, 4))
+    a = a.ravel()
+    ax1 = a[0]
+    ax2 = a[1]
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=123)
+
+#     from IPython.core.debugger import Pdb; Pdb().set_trace()
+
+    if isinstance_pd(X):
+        X = X.values
+    if isinstance_pd(y):
+        y = y.values
+
+    rocs = []
+    prs = []
+    aucs = []
+    average_precisions = []
+
+    for i, (train_index, test_index) in enumerate(skf.split(X, y)):
+        x_train = X[train_index, :]
+        y_train = y[train_index]
+        x_test = X[test_index, :]
+        y_test = y[test_index]
+
+        dtrain = xgb.DMatrix(x_train, label=y_train)
+        dvalid = xgb.DMatrix(x_test, label=y_test)
+
+        num_round = int(params['n_estimators'])
+
+        gbm_model = xgb.train(
+            params,
+            dtrain,
+            num_round,
+            # evals=watchlist,
+            # verbose_eval=True
+        )
+        pred_values = gbm_model.predict(
+            dvalid,
+            ntree_limit=gbm_model.best_iteration + 1
+        )
+
+        fpr, tpr, _ = roc_curve(y_test, pred_values)
+        precision, recall, _ = precision_recall_curve(y_test, pred_values)
+
+        rocs.append((fpr, tpr))
+        prs.append((precision, recall))
+
+        roc_auc = roc_auc_score(y_test, pred_values)
+        aucs.append(roc_auc)
+
+        aps = average_precision_score(y_test, pred_values)
+        average_precisions.append(aps)
+
+        ax1.plot(fpr, tpr, lw=1, alpha=1,
+             label='ROC fold %d (AUC = %0.2f)' % (i, roc_auc))
+        ax2.plot(recall, precision, lw=1, alpha=1,
+             label='AP fold %d (AUC = %0.2f)' % (i, aps))
+
+#     from IPython.core.debugger import Pdb; Pdb().set_trace()
+#     fprs, tprs = zip(*rocs)
+#     mean_fpr = np.mean(fprs, axis=0)
+#     mean_tpr = np.mean(tprs, axis=0)
+    mean_auc = np.mean(aucs)
+    std_auc = np.std(aucs)
+
+#     ax1.plot(mean_fpr, mean_tpr, color='b',
+#          label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
+#          lw=2, alpha=.8)
+
+#     precisions, recalls = zip(*prs)
+#     mean_precision = np.mean(precisions, axis=0)
+#     mean_recall = np.mean(recall, axis=0)
+    mean_average_precisions = np.mean(average_precisions)
+    std_average_precisions = np.std(average_precisions)
+
+#     ax2.plot(mean_recall, mean_precision, color='b',
+#          label=r'Mean AP ( %0.2f $\pm$ %0.2f)' % (mean_average_precisions, std_average_precisions),
+#          lw=2, alpha=.8)
+
+#     std_tpr = np.std(tprs, axis=0)
+#     tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+#     tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+#     ax1.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
+#                     label=r'$\pm$ 1 std. dev.')
+
+#     std_pre_recs = np.std(precisions, axis=0)
+#     pre_pre_upper = np.minimum(mean_pre_recs + std_pre_recs, 1)
+#     pre_pre_lower = np.maximum(mean_pre_recs - std_pre_recs, 0)
+#     ax2.fill_between(mean_recall, pre_pre_lower, pre_pre_upper, color='grey', alpha=.2,
+#                     label=r'$\pm$ 1 std. dev.')
+
+    ax1.set_xlim([-0.05, 1.05])
+    ax1.set_ylim([-0.05, 1.05])
+    ax1.set_xlabel('False Positive Rate')
+    ax1.set_ylabel('True Positive Rate')
+    ax1.set_title('Receiver operating characteristic: AUC={0:0.2f} $\pm$ {1:0.2f}'.format(mean_auc, std_auc))
+    ax1.legend(loc="lower right")
+
+    ax2.set_xlabel('Recall')
+    ax2.set_ylabel('Precision')
+    ax2.set_ylim([-0.05, 1.05])
+    ax2.set_xlim([-0.05, 1.05])
+    ax2.set_title('Precision-Recall curve: AUC={0:0.2f} $\pm$ {1:0.2f}'.format(
+              mean_average_precisions, std_average_precisions))
+    ax2.legend(loc="lower right")
+    plt.show()
+
+
+def plot_roc_prerec(test, score, target_name=None):
+    if target_name is not None:
+        print(target_name)
+    roc_score = roc_auc_score(test, score)
+    print('ROC score: {0:0.2f}'.format(
+          roc_score))
+    average_precision = average_precision_score(test, score)
+    print('Average precision-recall score: {0:0.2f}'.format(
+          average_precision))
+
+    sns.set(font='IPAPGothic')
+    _, a = plt.subplots(nrows=1, ncols=2, figsize=(14, 4))
+    a = a.ravel()
+    ax1 = a[0]
+    ax2 = a[1]
+
+    # ROC
+    fpr, tpr, _ = roc_curve(test, score)
+    step_kwargs = ({'step': 'post'}
+                   if 'step' in signature(plt.fill_between).parameters
+                   else {})
+    ax1.step(fpr, tpr, lw=2, color='b', alpha=1,
+             where='post')
+    ax1.fill_between(fpr, tpr, alpha=0.2, color='b', **step_kwargs)
+
+    ax1.set_xlim([-0.05, 1.05])
+    ax1.set_ylim([-0.05, 1.05])
+    ax1.set_xlabel('False Positive Rate')
+    ax1.set_ylabel('True Positive Rate')
+    ax1.set_title('Receiver operating characteristic: 'ROC score: {0:0.2f}'.format(
+          roc_score))
+    ax1.legend(loc="lower right")
+
+    # PRE-REC
+    precision, recall, _ = precision_recall_curve(test, score)
+    step_kwargs = ({'step': 'post'}
+                   if 'step' in signature(plt.fill_between).parameters
+                   else {})
+    ax2.step(recall, precision, color='b', alpha=1,
+             where='post')
+    ax2.fill_between(recall, precision, alpha=0.2, color='b', **step_kwargs)
+
+    ax2.set_xlabel('Recall')
+    ax2.set_ylabel('Precision')
+    ax2.set_ylim([0.0, 1.05])
+    ax2.set_xlim([0.0, 1.05])
+    ax2.set_title('Precision-Recall curve: AUC (AP)={0:0.2f}'.format(
+              average_precision))
+    ax2.legend(loc="lower right")
+    plt.show()
+
+
+def plotConfusionMatrix(y_test,pred,y_test_legit,y_test_fraud):
+
+    cfn_matrix = confusion_matrix(y_test,pred)
+    cfn_norm_matrix = np.array([[1.0 / y_test_legit,1.0/y_test_legit],[1.0/y_test_fraud,1.0/y_test_fraud]])
+    norm_cfn_matrix = cfn_matrix * cfn_norm_matrix
+
+    fig = plt.figure(figsize=(15,5))
+    ax = fig.add_subplot(1,2,1)
+    sns.heatmap(cfn_matrix,cmap='coolwarm_r',linewidths=0.5,annot=True,ax=ax)
+    plt.title('Confusion Matrix')
+    plt.ylabel('Real Classes')
+    plt.xlabel('Predicted Classes')
+
+    ax = fig.add_subplot(1,2,2)
+    sns.heatmap(norm_cfn_matrix,cmap='coolwarm_r',linewidths=0.5,annot=True,ax=ax)
+
+    plt.title('Normalized Confusion Matrix')
+    plt.ylabel('Real Classes')
+    plt.xlabel('Predicted Classes')
+    plt.show()
+
+    print('---Classification Report---')
+    print(classification_report(y_test,pred))
