@@ -139,6 +139,13 @@ class Clf_HpoSearch(object):
             self.X, self.y, test_size=test_size,
             # random_state=random_state
         )
+
+        count_0, count_1 = (y_train==0).sum(), (y_train==1).sum()
+
+        df_class_1_over = df_class_1.sample(count_0, replace=True)
+        _x_train = pd.concat([df_class_0, df_class_1_over], axis=0)
+        _y_train = _x_train[target]
+
         self.x_train = x_train
         self.x_test = x_test
         self.y_train = y_train
