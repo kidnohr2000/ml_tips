@@ -47,6 +47,7 @@ HPO_PARAMS = {
         # Increase this number if you have more cores. Otherwise, remove it and it will default
         # to the maxium number.
         'n_jobs': MP,
+        'nthread': MP,
         'booster': 'gbtree',
         'tree_method': 'exact',
         'silent': 1,

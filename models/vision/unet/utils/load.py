@@ -12,6 +12,7 @@ from .utils import resize_and_crop, get_square, normalize, hwc_to_chw
 
 def get_ids(dir):
     """Returns a list of the ids in the directory"""
+    """".jpgより前"""
     return (f[:-4] for f in os.listdir(dir))
 
 

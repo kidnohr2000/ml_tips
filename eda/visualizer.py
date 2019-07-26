@@ -65,6 +65,67 @@ def null_ratio_visualizer(df, ex_cols=[]):
     plt.show()
 
 
+def get_outlier_data(df, m=3):
+    cols = df.columns
+    X = df.values
+    outlier_rate = ((np.abs(X - np.nanmean(X, axis=0)) > m * np.nanstd(X, axis=0)).sum(axis=0) / len(X)) * 100
+    res = pd.DataFrame({'Outlier Ratio' :outlier_rate}, index=cols)
+    res = res.sort_values('Outlier Ratio', ascending=False)
+    return res
+
+
+def outlier_data_check(df):
+    tmp = get_outlier_data(df)
+
+    if tmp.sum() == 0:
+        print('no empty string data!!')
+    else:
+        display(tmp[tmp > 0])
+
+
+def get_col_hasoutlier(df, thres=0):
+    tmp = get_outlier_data(df)
+    return tmp[tmp['Outlier Ratio']>thres].index.values
+
+
+def outlier_ratio_visualizer(df, ex_cols=[]):
+
+    if ex_cols:
+        df = df.drop(columns=ex_cols)
+    outlier_data = get_outlier_data(df, m=3)
+    display(outlier_data)
+
+    plt.figure(figsize=(15, 6))
+
+    plt.xticks(rotation='90')
+    sns.barplot(x=outlier_data.index, y=outlier_data['Outlier Ratio'])
+
+    plt.xlabel('Features', fontsize=15)
+    plt.ylabel('Percent of missing values', fontsize=15)
+    plt.title('Percent outlier data by feature', fontsize=15)
+
+    plt.show()
+
+
+def null_ratio_visualizer(df, ex_cols=[]):
+
+    if ex_cols:
+        df = df.drop(columns=ex_cols)
+    missing_data = get_missing_data(df)
+    display(missing_data)
+
+    plt.figure(figsize=(15, 6))
+
+    plt.xticks(rotation='90')
+    sns.barplot(x=missing_data.index, y=missing_data['Missing Ratio'])
+
+    plt.xlabel('Features', fontsize=15)
+    plt.ylabel('Percent of missing values', fontsize=15)
+    plt.title('Percent missing data by feature', fontsize=15)
+
+    plt.show()
+
+
 def null_value_check(df):
     tmp = df.isnull().sum().sort_values(ascending=False)
 
@@ -74,7 +135,7 @@ def null_value_check(df):
         display(tmp[tmp > 0])
 
 
-def enpty_string_check(df):
+def empty_string_check(df):
     tmp = (df=='').sum().sort_values(ascending=False)
 
     if tmp.sum() == 0:
@@ -134,15 +195,16 @@ def decompose_model_visualizer(
     else:
         X_tr = model.fit_transform(X_std)
 
-    X_p1 = X_tr[np.where(y==1), visual_dim[0]]
-    X_n1 = X_tr[np.where(y==0), visual_dim[0]]
-    X_p2 = X_tr[np.where(y==1), visual_dim[1]]
-    X_n2 = X_tr[np.where(y==0), visual_dim[1]]
-
+    y_unique = np.unique(y)
     plt.figure(figsize=(8, 6))
 
-    plt.scatter(X_p1, X_p2, color='g', label='Positive', alpha=0.5)
-    plt.scatter(X_n1, X_n2, color='r', label='Negative', alpha=0.5)
+    with sns.color_palette("hls", 10):
+
+        for label in y_unique:
+            X_1 = X_tr[np.where(y==label), visual_dim[0]]
+            X_2 = X_tr[np.where(y==label), visual_dim[1]]
+
+            plt.scatter(X_1, X_2, label=label, alpha=0.5)
 
     plt.xlabel('dimention {}'.format(visual_dim[0]))
     plt.ylabel('dimention {}'.format(visual_dim[1]))
@@ -167,11 +229,29 @@ def get_col_high_corr(df, thres=0.95, ex_cols=[], _abs=True):
     return indices
 
 
-def create_corrmap(df, ex_cols=[]):
+def create_corrmap(df, ex_cols=[], _abs=True):
     sns.set(font='IPAPGothic')
-    corrmat = df.drop(columns=ex_cols).corr()
+    _corrmat = df.drop(columns=ex_cols).corr()
+    if _abs:
+        corrmat = _corrmat.applymap(np.abs)
+    else:
+        corrmat = copy(_corrmat)
     plt.subplots(figsize=(12,9))
-    sns.heatmap(corrmat, vmax=0.9, square=True)
+    sns.heatmap(corrmat, vmin=0, vmax=1, square=True)
+    plt.show()
+
+
+## 特徴ごとに SalePrice とスピアマンの順位相関係数を昇順でソート
+## pltを縦長の figure に設定
+
+def spearman(frame, features, target_name):
+    spr = pd.DataFrame()
+    spr['feature'] = features
+    spr['spearman'] = [frame[f].corr(frame[target_name], 'spearman') for f in features]
+    spr = spr.sort_values('spearman')
+    plt.figure(figsize=(6, 0.25*len(features)))
+    sns.set(font='IPAPGothic')
+    sns.barplot(data=spr, y='feature', x='spearman', orient='h')
     plt.show()
 
 
@@ -212,6 +292,50 @@ def histgram_per_class(X, y, title='histgram_per_class'):
     plt.show()
 
 
+def violin_multi_class(df, y_label, ex_col=[], title='violin_multi_class'):
+    cols = []
+    for col in df.columns:
+        colnum = df[col].nunique()
+        if colnum >=10:
+            print('{0} is over 10, unique number is {1}'.format(col, colnum))
+            continue
+        elif col in [y_label] + ex_col:
+            continue
+        else:
+            cols.append(col)
+
+#     line_num = math.ceil(len(cols)/2)
+    print(cols)
+    line_num = len(cols)
+    y = df[y_label]
+    unique_y = y.unique()
+
+    sns.set(font='IPAPGothic')
+    print(line_num, )
+    _,a = plt.subplots(nrows=line_num, ncols=1, figsize=(2 * len(unique_y), 4 * line_num))
+    a = a.ravel()
+    for idx,ax in enumerate(a):
+        col = cols[idx]
+
+        with sns.color_palette("hls", 10):
+            g = sns.violinplot(
+                x=y_label, y=col, data=df.loc[~df[col].isnull(), :],
+                ax=ax
+            )
+            ax.set_title(title)
+
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def batch_manipulater(df, cols, target_name, batch_size=10):
+    for i in range(0, len(cols), batch_size):
+        start = i
+        stop = i + batch_size
+        violin_multi_class(df[cols[start:stop] + [target_name]], target_name)
+
+
 def _pairplot(df, x_vars=None, y_vars=None, hue=None):
     for col in y_vars:
         sns.set(font='IPAPGothic')
@@ -222,6 +346,44 @@ def _pairplot(df, x_vars=None, y_vars=None, hue=None):
             hue=hue
         )
         plt.show()
+
+
+def violin_multi_class_null(df, y_label, ex_col=[], title='violin_multi_class'):
+    cols = []
+    for col in df.columns:
+        colnum = df[col].nunique()
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            print('{0} is not numeric'.format(col))
+            continue
+        elif col in [y_label] + ex_col:
+            continue
+        else:
+            cols.append(col)
+
+    print('columns:', cols)
+    line_num = len(cols)
+    y = df[y_label]
+    unique_y = y.unique()
+
+    sns.set(font='IPAPGothic')
+    _,a = plt.subplots(nrows=line_num, ncols=1, figsize=(2 * len(unique_y), 4 * line_num))
+    a = a.ravel()
+    for idx,ax in enumerate(a):
+        col = cols[idx]
+
+        _df = df.copy()
+        _df[col] = _df[col].isnull() * 1
+
+        with sns.color_palette("hls", 10):
+            g = sns.violinplot(
+                x=y_label, y=col, data=_df,
+                ax=ax
+            )
+            ax.set_title(title)
+
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
 
 def importance_barplot(X, y, model, upper=30, train=True):

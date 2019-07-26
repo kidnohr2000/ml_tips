@@ -8,29 +8,38 @@ import numpy as np
 
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, clone
 from hyperopt import hp, tpe, Trials, fmin, STATUS_OK, space_eval
-from sklearn.svm import SVC
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
+# from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import RobustScaler
 import xgboost as xgb
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
-    accuracy_score,
-    f1_score,
-    roc_auc_score,
+    mean_absolute_error,
+    r2_score,
+    mean_squared_error,
 )
+
 
 RANDOM_STATE = 123
 MP = 4
 
 HPO_PARAMS = {
-    'RF': {
-        'max_depth': hp.choice('max_depth', range(1,20)),
-        # 'max_features': hp.choice('max_features', range(1,150)),
-        'n_estimators': hp.choice('n_estimators', range(100,500)),
-        'criterion': hp.choice('criterion', ["gini", "entropy"])
+    'EN': {
+        'alpha': hp.loguniform('alpha', 10**-3, 10**2),
+        'l1_ratio': hp.quniform('l1_ratio', 0, 1, 0.1),
+        'tol': hp.loguniform('tol', 10**-5, 10**-1),
+        'random_state': RANDOM_STATE,
+    },
+    'RID': {
+        'alpha': hp.loguniform('alpha', 10**-3, 10**2),
+        'tol': hp.loguniform('tol', 10**-5, 10**-1),
+        'random_state': RANDOM_STATE,
+    },
+    'LSS': {
+        'alpha': hp.loguniform('alpha', 10**-3, 10**2),
+        'tol': hp.loguniform('tol', 10**-5, 10**-1),
+        'random_state': RANDOM_STATE,
     },
     'XGB': {
         'n_estimators': hp.quniform('n_estimators', 100, 1000, 1),
@@ -42,27 +51,24 @@ HPO_PARAMS = {
         'subsample': hp.quniform('subsample', 0.5, 1, 0.05),
         'gamma': hp.quniform('gamma', 0.5, 1, 0.05),
         'colsample_bytree': hp.quniform('colsample_bytree', 0.5, 1, 0.05),
-        'eval_metric': 'auc',
-        'objective': 'binary:logistic',
+        'eval_metric': 'rmse',
+        'objective': 'reg:squarederror',
         # Increase this number if you have more cores. Otherwise, remove it and it will default
         # to the maxium number.
         'n_jobs': MP,
+        'nthread': MP,
         'booster': 'gbtree',
         'tree_method': 'exact',
         'silent': 1,
         'seed': RANDOM_STATE
     },
-    'MLP': {
-        'solver': 'lbfgs',
-        'alpha': hp.loguniform('alpha', 10**-5, 10**-1),
-        'hidden_layer_sizes': hp.choice('hidden_layer_sizes', [(i + 2, 2) for i in range(3)]),
-        'random_state': RANDOM_STATE,
-    }
 }
 
-CLF_DICT = {
-    'RF': RandomForestClassifier,
-    'XGB': xgb,
+REG_DICT = {
+    'EN': ElasticNet,
+    'RID': Ridge,
+    'EN': Lasso,
+    'LSS': xgb,
 }
 
 def trail_run(objective, hyperopt_parameters, max_evals=200):
@@ -86,25 +92,19 @@ def trail_run(objective, hyperopt_parameters, max_evals=200):
 
 # 例:
 # for k in HPO_PARAMS.keys():
-#     chs = Clf_HpoSearch(data, target[:, 0], k)
-#     best, trials = trail_run(chs.objective, chs.hyperopt_parameters, max_evals=5)
+#     reg = Reg_HpoSearch(data, target[:, 0], k)
+#     best, trials = trail_run(reg.objective, chs.hyperopt_parameters, max_evals=5)
 #     print(best)
-
-def f1_wrapper(func, average=None):
-    @functools.wraps(func)
-    def inner(*args, **kwargs):
-        kwargs.update(average=average)
-        return func(*args, **kwargs)
-    return inner
 
 
 METRIC_DICT = {
-    'auc': roc_auc_score,
-    'f1': f1_wrapper(f1_score, average='micro')
+    'mae': mean_absolute_error,
+    'r2': r2_score,
+    'mse': mean_squared_error,
 }
 
 
-class Clf_HpoSearch(object):
+class Reg_HpoSearch(object):
     def __init__(self, X, y, model_name, metric_name='auc'):
         self.X, self.y = X, y
         self.suffle_data()
@@ -157,14 +157,14 @@ class Clf_HpoSearch(object):
         loss = 1 - score
         return {'loss': loss, 'status': STATUS_OK}
 
-    def clf_objective(self, args):
+    def reg_objective(self, args):
         print("Training with params: ")
         print(args)
-        clf = CLF_DICT[self.model_name](**args)
-        clf.fit(self.x_train, self.y_train)
+        reg = REG_DICT[self.model_name](**args)
+        reg.fit(self.x_train, self.y_train)
         print(self.x_train.shape, self.y_train.shape)
         # validationデータを使用して、ラベルの予測
-        pred = clf.predict(self.x_test)
+        pred = reg.predict(self.x_test)
         # 予測ラベルと正解ラベルを使用してmicro f1を計算
         score = self.metric(self.y_test, pred)
         # 今回はmicro f1を最大化したいので、-1をかけて最小化に合わせる
