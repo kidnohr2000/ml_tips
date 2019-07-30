@@ -31,3 +31,10 @@ rcParams['font.family'] = 'IPAPGothic'
 %matplotlib inline
 
 # from IPython.core.debugger import Pdb; Pdb().set_trace()
+
+
+def cv2_imshow(title, image):
+    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    plt.title(title)
+    # as opencv loads in BGR format by default, we want to show it in RGB.
+    plt.show()
