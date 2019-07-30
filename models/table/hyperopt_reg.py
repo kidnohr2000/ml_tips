@@ -52,7 +52,8 @@ HPO_PARAMS = {
         'gamma': hp.quniform('gamma', 0.5, 1, 0.05),
         'colsample_bytree': hp.quniform('colsample_bytree', 0.5, 1, 0.05),
         'eval_metric': 'rmse',
-        'objective': 'reg:squarederror',
+        # 'objective': 'reg:squarederror',
+        'objective': 'reg:linear',
         # Increase this number if you have more cores. Otherwise, remove it and it will default
         # to the maxium number.
         'n_jobs': MP,
@@ -154,7 +155,7 @@ class Reg_HpoSearch(object):
         print("\t{0} {1}\n\n".format(self.metric.__qualname__, score))
         # The score function should return the loss (1-score)
         # since the optimize function looks for the minimum
-        loss = 1 - score
+        loss = score
         return {'loss': loss, 'status': STATUS_OK}
 
     def reg_objective(self, args):

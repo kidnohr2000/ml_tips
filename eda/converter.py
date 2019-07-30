@@ -27,7 +27,7 @@ pd.set_option("display.max_colwidth", 200)
 pd.set_option("display.max_rows", 200)
 
 
-def standard_scaler(X, eps=0):
+def standard_scaler(X, eps=1e-5):
 
     if len(X.shape) == 1:
         _mean = np.nanmean(X)
@@ -97,14 +97,26 @@ def add_static_col(_df, cols):
         )
     return df
 
-def add_onehot_col(_df, cols, sparse=False):
+# def add_onehot_col(_df, cols, sparse=False):
+#     df = _df.copy()
+#     for col in tqdm(cols):
+#         df_dummies = pd.get_dummies(
+#             df[col], prefix=str(col) + '_', dummy_na=False,
+#             sparse=sparse
+#         )
+#         df.drop(columns=[col], inplace=True)
+
+#         df = df.join(df_dummies)
+#     return df
+
+
+def _add_onehot_col(_df, cols, sparse=False):
     df = _df.copy()
     for col in tqdm(cols):
-        df_dummies = pd.get_dummies(
-            df[col], prefix=str(col) + '_', dummy_na=False,
-            sparse=sparse
-        )
-        df.drop(columns=[col], inplace=True)
+        print('add one hot: ', col)
+        unique_list = df[col].unique()
+        for v in df[col].unique():
+            df['{}__{}'.format(col, str(v))] = (df[col] == v) * 1
 
-        df = df.join(df_dummies)
+        df.drop(columns=[col], inplace=True)
     return df

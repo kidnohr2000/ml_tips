@@ -176,6 +176,36 @@ def log_convert_vidualizer(df, sel_col):
     plt.show()
 
 
+def plot_histgrams(data):
+    sns.set(font='IPAPGothic')
+    ncols = len(data.columns)
+    fig = plt.figure(figsize=(5 * 5, 5 * (ncols // 5 + 1)))
+    for i, col in enumerate(data.columns):
+        X = data[col].dropna()
+        plt.subplot(ncols // 5 + 1, 5, i + 1)
+        plt.hist(X, bins=20, alpha=0.5, \
+                 edgecolor="black", linewidth=2.0)
+        plt.xlabel(col, fontsize=18)
+        plt.ylabel("frequency", fontsize=18)
+    fig.tight_layout()
+    plt.show()
+
+
+def draw2by2log(arr):
+    sns.set(font='IPAPGothic')
+    fig = plt.figure();
+    plt.subplot(2,2,1)
+    sns.distplot(arr, fit=st.norm);
+    plt.subplot(2,2,3)
+    st.probplot(arr, plot=plt);
+    plt.subplot(2,2,2)
+    sns.distplot(np.log1p(arr), fit=st.norm);
+    plt.subplot(2,2,4)
+    st.probplot(np.log1p(arr), plot=plt)
+    plt.tight_layout()
+    plt.show()
+
+
 def decompose_model_visualizer(
     X, y, model=PCA(), visual_dim=[0, 1], ex_outlier=False
 ):
