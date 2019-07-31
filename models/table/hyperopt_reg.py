@@ -26,19 +26,19 @@ MP = 4
 
 HPO_PARAMS = {
     'EN': {
-        'alpha': hp.loguniform('alpha', 10**-3, 10**2),
+        'alpha': hp.loguniform('alpha', -3, 2),
         'l1_ratio': hp.quniform('l1_ratio', 0, 1, 0.1),
-        'tol': hp.loguniform('tol', 10**-5, 10**-1),
+        'tol': hp.loguniform('tol', -5, -1),
         'random_state': RANDOM_STATE,
     },
     'RID': {
-        'alpha': hp.loguniform('alpha', 10**-3, 10**2),
-        'tol': hp.loguniform('tol', 10**-5, 10**-1),
+        'alpha': hp.loguniform('alpha', -3, 2),
+        'tol': hp.loguniform('tol', -5, -1),
         'random_state': RANDOM_STATE,
     },
     'LSS': {
-        'alpha': hp.loguniform('alpha', 10**-3, 10**2),
-        'tol': hp.loguniform('tol', 10**-5, 10**-1),
+        'alpha': hp.loguniform('alpha', -3, 2),
+        'tol': hp.loguniform('tol', -5, -1),
         'random_state': RANDOM_STATE,
     },
     'XGB': {
@@ -170,4 +170,4 @@ class Reg_HpoSearch(object):
         score = self.metric(self.y_test, pred)
         # 今回はmicro f1を最大化したいので、-1をかけて最小化に合わせる
         print("\t{0} {1}\n\n".format(self.metric.__qualname__, score))
-        return {'loss': -1 * score, 'status': STATUS_OK}
+        return {'loss': 1 * score, 'status': STATUS_OK}

@@ -72,7 +72,7 @@ HPO_PARAMS = {
     },
     'MLP': {
         'solver': 'lbfgs',
-        'alpha': hp.loguniform('alpha', 10**-5, 10**-1),
+        'alpha': hp.loguniform('alpha', -5, -1),
         'hidden_layer_sizes': hp.choice('hidden_layer_sizes', [(i + 2, 2) for i in range(3)]),
         'random_state': RANDOM_STATE,
     }
