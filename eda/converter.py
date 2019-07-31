@@ -120,3 +120,31 @@ def _add_onehot_col(_df, cols, sparse=False):
 
         df.drop(columns=[col], inplace=True)
     return df
+
+
+def data_upsampling(df, label_name):
+    labels = df[label_name].unique()
+    sample_num = df[label_name].value_counts().max()
+
+    res = None
+    for l in labels:
+        if res is not None:
+            res = res.append(df.loc[df[label_name]==l, :].sample(sample_num, replace=True, random_state=123))
+        else:
+            res = df.loc[df[label_name]==l, :].sample(sample_num, replace=True, random_state=123)
+
+    return res.sample(frac=1).reset_index(drop=True)
+
+
+def data_downsampling(df, label_name):
+    labels = df[label_name].unique()
+    sample_num = df[label_name].value_counts().min()
+
+    res = None
+    for l in labels:
+        if res is not None:
+            res = res.append(df.loc[df[label_name]==l, :].sample(sample_num, random_state=123))
+        else:
+            res = df.loc[df[label_name]==l, :].sample(sample_num, random_state=123)
+
+    return res.sample(frac=1).reset_index(drop=True)
