@@ -18,6 +18,7 @@ import seaborn as sns
 import scipy.stats as st
 
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import StandardScaler
@@ -112,7 +113,7 @@ def null_ratio_visualizer(df, ex_cols=[]):
     if ex_cols:
         df = df.drop(columns=ex_cols)
     missing_data = get_missing_data(df)
-    display(missing_data)
+    display(missing_data.loc[missing_data['Missing Ratio']>0, :])
 
     plt.figure(figsize=(15, 6))
 
@@ -148,6 +149,12 @@ def get_col_hasnull(df, thres=0):
     tmp = df.isnull().sum().sort_values(ascending=False)
     ratio = tmp / len(df)
     return tmp[ratio>thres].index.values
+
+
+def get_col_hasnull_under_tres(df, thres=0.001):
+    tmp = df.isnull().sum().sort_values(ascending=False)
+    ratio = tmp / len(df)
+    return tmp[(ratio<thres) & (0<ratio)].index.values
 
 
 def get_null_rows(df, cols):

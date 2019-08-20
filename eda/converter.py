@@ -40,6 +40,28 @@ def standard_scaler(X, eps=1e-5):
     return (X - _mean) / (_std + eps), _mean, _std
 
 
+def decompose_model(
+    X, y, model=PCA(), ex_outlier=False
+):
+
+    if isinstance_pd(X):
+        X = X.values.astype(float)
+    if isinstance_pd(y):
+        y = y.values
+
+    X_std, _mean, _std = standard_scaler(X)
+    if ex_outlier:
+        X_std[np.where(X < -3)] = -3
+        X_std[np.where(X > 3)] = 3
+
+    if model.__class__.__name__ == 'LinearDiscriminantAnalysis':
+        X_tr = model.fit_transform(X_std, y)
+    else:
+        X_tr = model.fit_transform(X_std)
+
+    return X_tr, model, _mean, _std
+
+
 def df_standard_scaler(df, eps=0, suffix=''):
     idxs = df.index
     if suffix:
@@ -68,6 +90,14 @@ def rm_duplicated_columns(X):
         return df.drop(cols_to_drop, axis=1)
     else:
         return df.drop(cols_to_drop, axis=1).values
+
+
+def rm_null_columns(df, thres=95):
+    missing_data = get_missing_data(df)
+    rm_list = list(missing_data.loc[missing_data['Missing Ratio']>thres, :].index)
+    for l in rm_list:
+        print(l, missing_data.loc[l, 'Missing Ratio'])
+    return df.drop(columns=rm_list)
 
 
 def add_static_col(_df, cols):
