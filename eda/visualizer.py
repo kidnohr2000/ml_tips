@@ -599,7 +599,7 @@ def plot_roc_prerec(test, score, target_name=None):
     ax1.set_ylim([-0.05, 1.05])
     ax1.set_xlabel('False Positive Rate')
     ax1.set_ylabel('True Positive Rate')
-    ax1.set_title('Receiver operating characteristic: 'ROC score: {0:0.2f}'.format(
+    ax1.set_title('Receiver operating characteristic: ROC score: {0:0.2f}'.format(
           roc_score))
     ax1.legend(loc="lower right")
 

@@ -7,7 +7,7 @@ def mask_imshow(image, target):
     npimg = np.transpose(npimg, (1, 2, 0))
     npbbox = np.squeeze(target['boxes'].numpy())
     npmask = target['masks'].numpy()
-    npmask = np.squeeze(npmask)
+    npmask = np.squeeze(npmask) * 255
     fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(2 * 10,10))
     ax[0].imshow(npimg, cmap=plt.cm.bone)
     print((npbbox[0], npbbox[1]), (npbbox[2], npbbox[3]))

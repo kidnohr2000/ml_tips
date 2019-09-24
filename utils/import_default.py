@@ -28,9 +28,16 @@ pd.set_option("display.max_rows", 200)
 from matplotlib import rcParams
 rcParams['font.family'] = 'IPAPGothic'
 
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+# torch.cuda.empty_cache()
+
 %matplotlib inline
 
 # from IPython.core.debugger import Pdb; Pdb().set_trace()
+
+# import importlib
+# importlib.reload(モジュール名)
 
 
 def cv2_imshow(title, image):

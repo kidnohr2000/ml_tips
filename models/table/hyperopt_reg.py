@@ -106,7 +106,7 @@ METRIC_DICT = {
 
 
 class Reg_HpoSearch(object):
-    def __init__(self, X, y, model_name, metric_name='auc'):
+    def __init__(self, X, y, model_name, metric_name='mae'):
         self.X, self.y = X, y
         self.suffle_data()
         self.model_name = model_name
@@ -128,7 +128,7 @@ class Reg_HpoSearch(object):
         if self.model_name == 'XGB':
             return self.xgb_objective(args)
         else:
-            return self.clf_objective(args)
+            return self.reg_objective(args)
 
     def xgb_objective(self, args):
         print("Training with params: ")
