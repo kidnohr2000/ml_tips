@@ -458,6 +458,41 @@ def importance_barplot(X, y, model, upper=30, train=True):
 
 # In matplotlib < 1.5, plt.fill_between does not have a 'step' argument
 
+def plot_roc_prerec(y_test, y_pred):
+    sns.set(font='IPAPGothic')
+    _, a = plt.subplots(nrows=1, ncols=2, figsize=(14, 4))
+    a = a.ravel()
+    ax1 = a[0]
+    ax2 = a[1]
+
+    fpr, tpr, _ = roc_curve(y_test, y_pred)
+    precision, recall, _ = precision_recall_curve(y_test, y_pred)
+
+    roc_auc = roc_auc_score(y_test, y_pred)
+    aps = average_precision_score(y_test, y_pred)
+
+    ax1.plot(fpr, tpr, lw=1, alpha=1,
+         label='ROC fold %d (AUC = %0.2f)' % (0, roc_auc))
+    ax2.plot(recall, precision, lw=1, alpha=1,
+         label='AP fold %d (AUC = %0.2f)' % (0, aps))
+
+    ax1.set_xlim([-0.05, 1.05])
+    ax1.set_ylim([-0.05, 1.05])
+    ax1.set_xlabel('False Positive Rate')
+    ax1.set_ylabel('True Positive Rate')
+    ax1.set_title('Receiver operating characteristic: AUC={0:0.2f}'.format(roc_auc))
+    ax1.legend(loc="lower right")
+
+    ax2.set_xlabel('Recall')
+    ax2.set_ylabel('Precision')
+    ax2.set_ylim([-0.05, 1.05])
+    ax2.set_xlim([-0.05, 1.05])
+    ax2.set_title('Precision-Recall curve: AUC={0:0.2f}'.format(
+              aps))
+    ax2.legend(loc="lower right")
+    plt.show()
+
+
 def xbtraincv_plot_roc_prerec(X, y, params={}, target_name=None):
     if target_name is not None:
         print(f'target: {target_name}')

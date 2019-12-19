@@ -54,7 +54,7 @@ HPO_PARAMS = {
         'seed': RANDOM_STATE
     },
     'LR': {
-        'C': hp.loguniform('C', 0.00001, 100),
+        'C': hp.loguniform('C', -5, 2),
         'penalty': hp.choice('penalty', ['l1', 'l2']),
         'random_state': RANDOM_STATE
     },
