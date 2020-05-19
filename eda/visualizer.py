@@ -329,6 +329,47 @@ def histgram_per_class(X, y, title='histgram_per_class'):
     plt.show()
 
 
+def hist_plot(df, col, flg_col):
+    sns.set(font='IPAPGothic')
+    plt.figure(figsize=(12, 4))
+
+    try:
+        bins=np.histogram(np.hstack((
+            df[df[flg_col]==0][col].dropna().values,
+            df[df[flg_col]==1][col].dropna().values
+        )), bins=50)[1] #get the bin edges
+
+    except Exception as e:
+        print(e)
+    finally:
+        fig, ax = plt.subplots(figsize=(12, 4))
+
+        ax.hist(
+            df[df[flg_col]==0][col].values,
+            bins=bins,
+#             log=True,
+            label=f'{flg_col}=0',
+            alpha=0.5,
+            normed=1
+        )
+
+        ax.hist(
+            df[df[flg_col]==1][col].values,
+            bins=bins,
+#             log=True,
+            label=f'{flg_col}=1',
+            alpha=0.5,
+            normed=1
+        )
+
+        plt.ylabel('出現確率(%)')
+        plt.xlabel(col)
+        plt.title(f'{col}の出現確率分布')
+        plt.legend()
+    #     save_fig(f'histgram_{col}_{flg_col}')
+        plt.show()
+
+
 def violin_multi_class(df, y_label, ex_col=[], title='violin_multi_class'):
     cols = []
     for col in df.columns:
