@@ -30,6 +30,7 @@ rcParams['font.family'] = 'IPAPGothic'
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ['TENSORBOARD_BINARY'] = '/root/anaconda3/envs/python37/bin/tensorboard'
 # torch.cuda.empty_cache()
 
 %matplotlib inline
